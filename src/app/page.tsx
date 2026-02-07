@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { addMonths, subMonths } from "date-fns";
 import { Plus } from "lucide-react";
 import { CalendarHeader } from "@/components/calendar/CalendarHeader";
@@ -22,9 +22,39 @@ export default function Home() {
   const [selectedCalendars, setSelectedCalendars] = useState<CalendarType[]>(['personal', 'work', 'family']);
   const { permission, requestPermission, sendNotification } = useNotifications();
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | undefined>(undefined);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   // Enable polling for reminders
   useReminders(events);
+
+  // Load events from local storage on mount
+  useEffect(() => {
+    const savedEvents = localStorage.getItem('calendar_events');
+    if (savedEvents) {
+      try {
+        const parsed = JSON.parse(savedEvents);
+        // Convert date strings back to Date objects
+        const hydratedEvents = parsed.map((e: any) => ({
+          ...e,
+          start: new Date(e.start),
+          end: e.end ? new Date(e.end) : undefined,
+          // Reconstruct custom reminder times if they exist
+          reminderTimes: e.reminderTimes ? e.reminderTimes.map((rt: string) => new Date(rt)) : undefined
+        }));
+        setEvents(hydratedEvents);
+      } catch (error) {
+        console.error("Failed to parse events from local storage:", error);
+      }
+    }
+    setIsLoaded(true);
+  }, []);
+
+  // Save events to local storage whenever they change
+  useEffect(() => {
+    if (isLoaded) {
+      localStorage.setItem('calendar_events', JSON.stringify(events));
+    }
+  }, [events, isLoaded]);
 
 
   const nextMonth = () => {
