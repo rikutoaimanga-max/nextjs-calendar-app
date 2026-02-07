@@ -349,11 +349,11 @@ export function AddEventModal({ isOpen, onClose, onSave, onDelete, initialDate, 
                                     if (val !== "custom") setCustomReminderTime("");
                                 }}
                             >
-                                <option value="none">通知なし</option>
+                                <option value="none" className="text-black bg-white">通知なし</option>
                                 {REMINDER_OPTIONS.map(opt => (
-                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                    <option key={opt.value} value={opt.value} className="text-black bg-white">{opt.label}</option>
                                 ))}
-                                <option value="custom">指定日時</option>
+                                <option value="custom" className="text-black bg-white">指定日時</option>
                             </select>
                             <Button type="button" size="sm" onClick={addReminder} disabled={selectedReminderType === "none"}>＋</Button>
                         </div>
@@ -379,7 +379,7 @@ export function AddEventModal({ isOpen, onClose, onSave, onDelete, initialDate, 
                             onChange={(e) => setRepeat(e.target.value)}
                         >
                             {REPEAT_OPTIONS.map(opt => (
-                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                <option key={opt.value} value={opt.value} className="text-black bg-white">{opt.label}</option>
                             ))}
                         </select>
                     </div>
