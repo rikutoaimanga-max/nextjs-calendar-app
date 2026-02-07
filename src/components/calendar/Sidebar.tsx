@@ -45,45 +45,51 @@ export function Sidebar({ calendars, selectedCalendarIds, onToggleCalendar, onAd
 
             <div className="flex-1 overflow-y-auto p-4">
                 <div className="mb-6">
-                    <div className="flex items-center justify-between mb-2">
-                        <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider">カレンダー</h2>
-                        <button
-                            onClick={() => setIsCreateModalOpen(true)}
-                            className="text-gray-400 hover:text-white transition-colors"
-                        >
-                            <Plus className="w-4 h-4" />
-                        </button>
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider">カレンダーリスト</h2>
                     </div>
 
-                    <div className="space-y-1">
+                    <div className="space-y-3">
                         {calendars.map(cal => (
-                            <div key={cal.id} className="flex items-center gap-2 group relative">
+                            <div key={cal.id} className="relative group">
                                 <button
                                     onClick={() => onToggleCalendar(cal.id)}
-                                    className={`flex-1 flex items-center gap-3 p-2 rounded-lg transition-all text-sm text-left overflow-hidden ${selectedCalendarIds.includes(cal.id)
-                                        ? "bg-white/5 text-white"
-                                        : "text-gray-500 hover:bg-white/5 hover:text-gray-300"
+                                    className={`w-full flex items-center gap-4 p-3 rounded-xl transition-all text-left border ${selectedCalendarIds.includes(cal.id)
+                                        ? "bg-white/10 border-primary/50"
+                                        : "bg-transparent border-transparent hover:bg-white/5"
                                         }`}
                                 >
-                                    {/* Cover Image Indicator (if exists) or Color Dot */}
-                                    {cal.coverImage ? (
-                                        <div className="w-6 h-6 rounded-full overflow-hidden border border-white/10 shrink-0">
+                                    {/* Cover Image or Color Placeholder */}
+                                    <div className={`w-14 h-14 rounded-xl overflow-hidden shrink-0 shadow-sm ${!cal.coverImage && "bg-white/5 flex items-center justify-center"}`}>
+                                        {cal.coverImage ? (
                                             <img src={cal.coverImage} alt="" className="w-full h-full object-cover" />
-                                        </div>
-                                    ) : (
-                                        <div className={`w-3 h-3 rounded-full ${cal.color} ${selectedCalendarIds.includes(cal.id) ? 'ring-2 ring-white/20' : 'opacity-50'}`} />
-                                    )}
+                                        ) : (
+                                            <div className={`w-6 h-6 rounded-full ${cal.color}`} />
+                                        )}
+                                    </div>
 
-                                    <span className="truncate flex-1">{cal.name}</span>
-                                    {selectedCalendarIds.includes(cal.id) && <Check className="w-3 h-3 opacity-50" />}
+                                    <div className="flex-1 min-w-0">
+                                        <div className="font-bold text-white text-base truncate">{cal.name}</div>
+                                        <div className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                                            <div className={`w-2 h-2 rounded-full ${cal.color}`} />
+                                            {selectedCalendarIds.includes(cal.id) ? "表示中" : "非表示"}
+                                        </div>
+                                    </div>
+
+                                    {selectedCalendarIds.includes(cal.id) && (
+                                        <div className="absolute top-2 right-2">
+                                            <div className="w-2 h-2 bg-primary rounded-full shadow-[0_0_8px_rgba(0,224,208,0.5)]" />
+                                        </div>
+                                    )}
                                 </button>
+
                                 {calendars.length > 1 && (
                                     <button
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             handleDelete(cal.id, cal.name);
                                         }}
-                                        className="absolute right-2 p-1.5 text-gray-500 hover:text-red-500 transition-colors"
+                                        className="absolute -top-1 -right-1 p-1 bg-gray-800 rounded-full text-gray-400 hover:text-red-500 hover:bg-white border border-white/10 opacity-0 group-hover:opacity-100 transition-all shadow-md z-10"
                                         title="削除"
                                     >
                                         <X className="w-3 h-3" />
@@ -91,6 +97,14 @@ export function Sidebar({ calendars, selectedCalendarIds, onToggleCalendar, onAd
                                 )}
                             </div>
                         ))}
+
+                        <button
+                            onClick={() => setIsCreateModalOpen(true)}
+                            className="w-full py-4 mt-2 border-2 border-dashed border-white/10 rounded-xl flex flex-col items-center justify-center gap-2 text-gray-500 hover:text-white hover:border-white/30 hover:bg-white/5 transition-all group"
+                        >
+                            <Plus className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                            <span className="text-xs font-bold">新しいカレンダーを作る</span>
+                        </button>
                     </div>
                 </div>
             </div>
