@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { addMonths, subMonths } from "date-fns";
-import { Plus, Menu } from "lucide-react";
+import { Plus, Menu, Bell } from "lucide-react";
 import { CalendarHeader } from "@/components/calendar/CalendarHeader";
 import { CalendarGrid } from "@/components/calendar/CalendarGrid";
 import { Sidebar } from "@/components/calendar/Sidebar";
@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { CalendarEvent, Calendar as CalendarType } from "@/types";
 import { useNotifications } from "@/hooks/use-notifications";
 import { useReminders } from "@/hooks/use-reminders";
-import { Bell } from "lucide-react";
 
 export default function Home() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -39,7 +38,14 @@ export default function Home() {
 
     if (savedCalendars) {
       try {
-        loadedCalendars = JSON.parse(savedCalendars);
+        const parsed = JSON.parse(savedCalendars);
+        // Filter out legacy default calendars
+        loadedCalendars = parsed.filter((c: CalendarType) => !['personal', 'work', 'family'].includes(c.id));
+
+        // If all were defaults and user has nothing else, or just empty
+        if (loadedCalendars.length === 0) {
+          loadedCalendars = [{ id: 'default', name: 'マイカレンダー', color: 'bg-blue-500' }];
+        }
       } catch (e) {
         console.error("Failed to parse calendars", e);
         loadedCalendars = [{ id: 'default', name: 'マイカレンダー', color: 'bg-blue-500' }];
@@ -50,7 +56,7 @@ export default function Home() {
     }
 
     setCalendars(loadedCalendars);
-    // Select all by default if not saved (could save selection state too, but all is safe)
+    // Select all by default if not saved
     setSelectedCalendarIds(loadedCalendars.map(c => c.id));
 
     // 2. Load Events
@@ -73,9 +79,79 @@ export default function Home() {
     setIsLoaded(true);
   }, []);
 
-  // ... (useEffect for persistence same as before)
+  // Save Calendars
+  useEffect(() => {
+    if (isLoaded) {
+      localStorage.setItem('calendar_definitions', JSON.stringify(calendars));
+    }
+  }, [calendars, isLoaded]);
 
-  // ... (handleDaySelect ...)
+  // Save Events
+  useEffect(() => {
+    if (isLoaded) {
+      localStorage.setItem('calendar_events', JSON.stringify(events));
+    }
+  }, [events, isLoaded]);
+
+
+  const nextMonth = () => {
+    setCurrentDate(addMonths(currentDate, 1));
+  };
+
+  const prevMonth = () => {
+    setCurrentDate(subMonths(currentDate, 1));
+  };
+
+  const goToToday = () => {
+    const today = new Date();
+    setCurrentDate(today);
+    setSelectedDate(today);
+  };
+
+  const handleDaySelect = (date: Date) => {
+    setSelectedDate(date);
+  };
+
+  const handleDayAdd = (date: Date) => {
+    setSelectedDate(date);
+    setSelectedEvent(undefined);
+    setIsModalOpen(true);
+  };
+
+  const handleEventClick = (event: CalendarEvent) => {
+    setSelectedEvent(event);
+    setSelectedDate(event.start);
+    setIsModalOpen(true);
+  };
+
+  const handleSaveEvent = (eventData: Omit<CalendarEvent, "id">) => {
+    if (selectedEvent) {
+      // Update
+      setEvents(events.map(e => e.id === selectedEvent.id ? { ...eventData, id: selectedEvent.id } : e));
+      if (permission === "granted") {
+        sendNotification("予定を更新しました", { body: `${eventData.title}` });
+      }
+    } else {
+      // Create
+      const newEvent: CalendarEvent = {
+        ...eventData,
+        id: Math.random().toString(36).substr(2, 9),
+      };
+      setEvents([...events, newEvent]);
+      if (permission === "granted") {
+        sendNotification("予定を追加しました", { body: `${newEvent.title}` });
+      }
+    }
+    setIsModalOpen(false);
+    setSelectedEvent(undefined);
+  };
+
+  const handleDeleteEvent = (eventId: string) => {
+    setEvents(events.filter(e => e.id !== eventId));
+    setIsModalOpen(false);
+    setSelectedEvent(undefined);
+    if (permission === "granted") sendNotification("予定を削除しました");
+  };
 
   const handleDeleteCalendar = (id: string) => {
     // Prevent deleting the last calendar
@@ -93,17 +169,13 @@ export default function Home() {
     setEvents(newEvents);
   };
 
+  const filteredEvents = events.filter(event => selectedCalendarIds.includes(event.calendarId));
 
-
-  const nextMonth = () => {
-    setCurrentDate(addMonths(currentDate, 1));
+  const toggleCalendar = (id: string) => {
+    setSelectedCalendarIds(prev =>
+      prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]
+    );
   };
-
-  const prevMonth = () => {
-    setCurrentDate(subMonths(currentDate, 1));
-  };
-
-  // ...
 
   const addCalendar = (newCalendar: CalendarType) => {
     setCalendars([...calendars, newCalendar]);
@@ -162,7 +234,7 @@ export default function Home() {
               onDayClick={handleDaySelect}
               onDayDoubleClick={handleDayAdd}
               onEventClick={handleEventClick}
-              calendars={calendars} // Pass calendars map/array for colors
+              calendars={calendars}
             />
           </div>
         </div>
@@ -190,11 +262,8 @@ export default function Home() {
         onDelete={handleDeleteEvent}
         initialDate={selectedDate}
         event={selectedEvent}
-        calendars={calendars} // Pass dynamic calendars
+        calendars={calendars}
       />
     </main>
   );
 }
-
-
-
