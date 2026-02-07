@@ -1,13 +1,12 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
-import { format } from "date-fns";
+import { format, addHours } from "date-fns";
 import { ja } from "date-fns/locale";
 import { CalendarEvent, CalendarType, CALENDAR_LABELS, CALENDAR_COLORS } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
-
+import { MapPin, Link as LinkIcon, Repeat, FileText, CheckSquare, Paperclip, User, Clock, Bell } from "lucide-react";
 
 // Helper for reminder options
 const REMINDER_OPTIONS = [
@@ -19,20 +18,44 @@ const REMINDER_OPTIONS = [
     { value: "1_day_before", label: "1日前", minutes: 24 * 60 },
 ];
 
+const REPEAT_OPTIONS = [
+    { value: "none", label: "繰り返しなし" },
+    { value: "daily", label: "毎日" },
+    { value: "weekly", label: "毎週" },
+    { value: "monthly", label: "毎月" },
+    { value: "yearly", label: "毎年" },
+];
+
 interface AddEventModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSave: (event: Omit<CalendarEvent, "id">) => void;
-    onDelete?: (eventId: string) => void; // Add delete callback
+    onDelete?: (eventId: string) => void;
     initialDate?: Date;
-    event?: CalendarEvent; // Add event prop for editing
+    event?: CalendarEvent;
 }
 
 export function AddEventModal({ isOpen, onClose, onSave, onDelete, initialDate, event }: AddEventModalProps) {
     const [title, setTitle] = useState("");
-    const [date, setDate] = useState("");
-    const [time, setTime] = useState("09:00");
+
+    // Date & Time
+    const [startDate, setStartDate] = useState("");
+    const [startTime, setStartTime] = useState("09:00");
+    const [endDate, setEndDate] = useState("");
+    const [endTime, setEndTime] = useState("10:00");
+    const [isAllDay, setIsAllDay] = useState(false);
+    const [isMemo, setIsMemo] = useState(false); // Save to memo
+
+    // Type
     const [type, setType] = useState<CalendarType>("personal");
+
+    // Details
+    const [location, setLocation] = useState("");
+    const [url, setUrl] = useState("");
+    const [repeat, setRepeat] = useState("none");
+    const [memo, setMemo] = useState(""); // Description
+    const [checklist, setChecklist] = useState<{ id: string; text: string; checked: boolean }[]>([]);
+    const [newChecklistItem, setNewChecklistItem] = useState("");
 
     // Reminder State
     const [reminders, setReminders] = useState<{ type: string; time?: Date }[]>([]);
@@ -42,14 +65,32 @@ export function AddEventModal({ isOpen, onClose, onSave, onDelete, initialDate, 
     useEffect(() => {
         if (isOpen) {
             if (event) {
-                // Edit mode: populate fields
+                // Edit mode
                 setTitle(event.title);
-                setDate(format(event.start, "yyyy-MM-dd"));
-                setTime(format(event.start, "HH:mm"));
-                setType(event.calendarId);
+                setStartDate(format(event.start, "yyyy-MM-dd"));
+                setStartTime(format(event.start, "HH:mm"));
 
+                if (event.end) {
+                    setEndDate(format(event.end, "yyyy-MM-dd"));
+                    setEndTime(format(event.end, "HH:mm"));
+                } else {
+                    // Default end is +1 hour
+                    const end = addHours(event.start, 1);
+                    setEndDate(format(end, "yyyy-MM-dd"));
+                    setEndTime(format(end, "HH:mm"));
+                }
+
+                setIsAllDay(event.allDay);
+                setType(event.calendarId);
+                setLocation(event.location || "");
+                setUrl(event.url || "");
+                setRepeat(event.repeat || "none");
+                setMemo(event.description || "");
+                setIsMemo(event.isMemo || false);
+                setChecklist(event.checklist || []);
+
+                // Reminders
                 if (event.reminderTimes && event.reminderTimes.length > 0) {
-                    // Reconstruct reminders logic
                     const reconstructed = event.reminderTimes.map(rt => {
                         const diffMinutes = (event.start.getTime() - rt.getTime()) / 60000;
                         const match = REMINDER_OPTIONS.find(opt => Math.abs(opt.minutes - diffMinutes) < 1);
@@ -64,11 +105,27 @@ export function AddEventModal({ isOpen, onClose, onSave, onDelete, initialDate, 
                 }
             } else if (initialDate) {
                 // New event mode
-                setDate(format(initialDate, "yyyy-MM-dd"));
+                const sDate = format(initialDate, "yyyy-MM-dd");
+                setStartDate(sDate);
+                setEndDate(sDate);
+
+                const now = new Date();
+                const currentHour = now.getHours();
+                const nextHour = (currentHour + 1) % 24;
+                const nextNextHour = (currentHour + 2) % 24;
+
+                setStartTime(`${String(nextHour).padStart(2, '0')}:00`);
+                setEndTime(`${String(nextNextHour).padStart(2, '0')}:00`);
+
                 setTitle("");
-                setTime("09:00");
+                setIsAllDay(false);
+                setIsMemo(false);
+                setLocation("");
+                setUrl("");
+                setRepeat("none");
+                setMemo("");
+                setChecklist([]);
                 setReminders([]);
-                setCustomReminderTime("");
             }
             setSelectedReminderType("none");
             setCustomReminderTime("");
@@ -77,9 +134,12 @@ export function AddEventModal({ isOpen, onClose, onSave, onDelete, initialDate, 
 
     const addReminder = () => {
         if (selectedReminderType === "none") return;
-        if (!date || !time) return; // Need start time to calculate
+        if (!startDate || (!startTime && !isAllDay)) return;
 
-        const start = new Date(`${date}T${time}`);
+        // For all day, assume 9 AM for reminder calc
+        const timeStr = isAllDay ? "09:00" : startTime;
+        const start = new Date(`${startDate}T${timeStr}`);
+
         let newReminderTime: Date | undefined;
 
         if (selectedReminderType === "custom") {
@@ -94,7 +154,6 @@ export function AddEventModal({ isOpen, onClose, onSave, onDelete, initialDate, 
         }
 
         if (newReminderTime) {
-            // Avoid duplicates
             if (!reminders.some(r => r.time?.getTime() === newReminderTime?.getTime())) {
                 setReminders([...reminders, { type: selectedReminderType, time: newReminderTime }]);
             }
@@ -107,17 +166,39 @@ export function AddEventModal({ isOpen, onClose, onSave, onDelete, initialDate, 
         setReminders(reminders.filter((_, i) => i !== index));
     };
 
+    const addChecklistItem = () => {
+        if (!newChecklistItem.trim()) return;
+        setChecklist([...checklist, { id: Math.random().toString(36).substr(2, 9), text: newChecklistItem, checked: false }]);
+        setNewChecklistItem("");
+    };
+
+    const toggleChecklistItem = (id: string) => {
+        setChecklist(checklist.map(item => item.id === id ? { ...item, checked: !item.checked } : item));
+    };
+
+    const removeChecklistItem = (id: string) => {
+        setChecklist(checklist.filter(item => item.id !== id));
+    };
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!title || !date) return;
+        if (!title || !startDate) return;
 
-        const start = new Date(`${date}T${time}`);
+        const start = new Date(`${startDate}T${isAllDay ? "00:00" : startTime}`);
+        const end = new Date(`${endDate}T${isAllDay ? "23:59" : endTime}`);
 
         onSave({
             title,
             start,
-            allDay: false,
+            end,
+            allDay: isAllDay,
             calendarId: type,
+            location,
+            url,
+            description: memo,
+            isMemo,
+            repeat,
+            checklist,
             reminderTimes: reminders.map(r => r.time).filter((t): t is Date => !!t),
         });
 
@@ -134,15 +215,12 @@ export function AddEventModal({ isOpen, onClose, onSave, onDelete, initialDate, 
     };
 
     const handleClose = () => {
-        // Reset form
         setTitle("");
         setReminders([]);
-        setSelectedReminderType("none");
-        setCustomReminderTime("");
+        setChecklist([]);
         onClose();
     };
 
-    // Helper to format reminder label
     const getReminderLabel = (r: { type: string, time?: Date }) => {
         if (r.type === 'custom' && r.time) {
             return `${r.time.toLocaleString([], { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`
@@ -153,13 +231,14 @@ export function AddEventModal({ isOpen, onClose, onSave, onDelete, initialDate, 
 
     return (
         <Modal isOpen={isOpen} onClose={handleClose} title={event ? "予定を編集" : "予定を追加"}>
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-6">
+
+                {/* Title */}
                 <div>
-                    <label className="block text-xs font-bold mb-1.5 text-white uppercase tracking-wider">タイトル</label>
                     <input
                         type="text"
-                        className="w-full p-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all outline-none text-black placeholder:text-gray-400"
-                        placeholder="予定のタイトルを入力"
+                        className="w-full text-2xl font-bold bg-transparent border-b-2 border-primary/50 focus:border-primary outline-none transition-all placeholder:text-gray-500 py-2 text-primary"
+                        placeholder="タイトル"
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
                         required
@@ -167,113 +246,238 @@ export function AddEventModal({ isOpen, onClose, onSave, onDelete, initialDate, 
                     />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-xs font-bold mb-1.5 text-white uppercase tracking-wider">日付</label>
+                {/* Date & Time Section */}
+                <div className="bg-white/5 p-4 rounded-xl space-y-3">
+                    <div className="flex items-center gap-4">
+                        <label className="text-sm font-medium w-12 text-gray-400">開始</label>
                         <input
                             type="date"
-                            className="w-full p-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/50 outline-none transition-all text-black"
-                            value={date}
-                            onChange={(e) => setDate(e.target.value)}
+                            className="flex-1 bg-white/10 border-0 rounded-lg p-2 text-sm focus:ring-1 focus:ring-primary outline-none"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
                             required
                         />
+                        {!isAllDay && (
+                            <input
+                                type="time"
+                                className="w-24 bg-white/10 border-0 rounded-lg p-2 text-sm focus:ring-1 focus:ring-primary outline-none"
+                                value={startTime}
+                                onChange={(e) => setStartTime(e.target.value)}
+                                required
+                            />
+                        )}
                     </div>
-                    <div>
-                        <label className="block text-xs font-bold mb-1.5 text-white uppercase tracking-wider">時間</label>
+                    <div className="flex items-center gap-4">
+                        <label className="text-sm font-medium w-12 text-gray-400">終了</label>
                         <input
-                            type="time"
-                            className="w-full p-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/50 outline-none transition-all text-black"
-                            value={time}
-                            onChange={(e) => setTime(e.target.value)}
+                            type="date"
+                            className="flex-1 bg-white/10 border-0 rounded-lg p-2 text-sm focus:ring-1 focus:ring-primary outline-none"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
                             required
                         />
+                        {!isAllDay && (
+                            <input
+                                type="time"
+                                className="w-24 bg-white/10 border-0 rounded-lg p-2 text-sm focus:ring-1 focus:ring-primary outline-none"
+                                value={endTime}
+                                onChange={(e) => setEndTime(e.target.value)}
+                                required
+                            />
+                        )}
+                    </div>
+                    <div className="flex items-center gap-6 pt-2">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                checked={isAllDay}
+                                onChange={(e) => setIsAllDay(e.target.checked)}
+                            />
+                            <span className="text-sm">終日</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                checked={isMemo}
+                                onChange={(e) => setIsMemo(e.target.checked)}
+                            />
+                            <span className="text-sm">メモに保存する</span>
+                        </label>
                     </div>
                 </div>
 
-                <div>
-                    <label className="block text-xs font-bold mb-2 text-white uppercase tracking-wider">カレンダー</label>
-                    <div className="flex gap-2">
-                        {(Object.keys(CALENDAR_LABELS) as CalendarType[]).map((t) => (
-                            <button
-                                key={t}
-                                type="button"
-                                className={`flex-1 py-2.5 px-3 rounded-xl text-sm font-medium transition-all border ${type === t
-                                    ? "bg-primary text-black font-bold border-primary shadow-[0_0_15px_rgba(0,224,208,0.4)]"
-                                    : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50 hover:text-black"
-                                    }`}
-                                onClick={() => setType(t)}
-                            >
-                                {CALENDAR_LABELS[t]}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="space-y-2">
-                    <label className="block text-xs font-bold text-white uppercase tracking-wider">通知設定</label>
-
-                    {/* List of existing reminders */}
-                    <div className="space-y-2 mb-2">
-                        {reminders.map((r, idx) => (
-                            <div key={idx} className="flex items-center justify-between bg-white/10 p-2 rounded-lg text-sm text-white border border-white/5">
-                                <span>🔔 {getReminderLabel(r)}</span>
-                                <button type="button" onClick={() => removeReminder(idx)} className="text-gray-400 hover:text-red-400 p-1">✕</button>
-                            </div>
-                        ))}
+                {/* Details Section */}
+                <div className="space-y-4">
+                    {/* Calendar Type */}
+                    <div className="flex items-center gap-3">
+                        <User className="w-5 h-5 text-gray-400" />
+                        <div className="flex flex-1 gap-2">
+                            {(Object.keys(CALENDAR_LABELS) as CalendarType[]).map((t) => (
+                                <button
+                                    key={t}
+                                    type="button"
+                                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${type === t
+                                        ? "bg-primary text-black font-bold border-primary"
+                                        : "bg-transparent text-gray-400 border-white/10 hover:bg-white/5"
+                                        }`}
+                                    onClick={() => setType(t)}
+                                >
+                                    {CALENDAR_LABELS[t]}
+                                </button>
+                            ))}
+                        </div>
                     </div>
 
-                    <div className="flex gap-2">
-                        <div className="relative flex-1">
+                    {/* User Profile (Placeholder) */}
+                    <div className="flex items-center gap-3">
+                        <div className="w-5 flex justify-center"><div className="w-4 h-4 rounded-full bg-pink-300" /></div>
+                        <span className="text-sm text-gray-400">自分</span>
+                    </div>
+
+                    {/* Notification */}
+                    <div className="flex items-center gap-3">
+                        <Bell className="w-5 h-5 text-gray-400" />
+                        <div className="flex-1 flex gap-2">
                             <select
-                                className="w-full p-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/50 outline-none appearance-none transition-all text-black"
+                                className="flex-1 p-2 bg-white/5 border border-white/10 rounded-lg text-sm outline-none focus:border-primary"
                                 value={selectedReminderType}
                                 onChange={(e) => {
                                     const val = e.target.value;
                                     setSelectedReminderType(val);
-                                    if (val !== "custom") {
-                                        setCustomReminderTime("");
-                                    }
+                                    if (val !== "custom") setCustomReminderTime("");
                                 }}
                             >
-
-                                <option value="none" className="bg-white">通知を追加...</option>
+                                <option value="none">通知なし</option>
                                 {REMINDER_OPTIONS.map(opt => (
-                                    <option key={opt.value} value={opt.value} className="bg-white">{opt.label}</option>
+                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
                                 ))}
-                                <option value="custom" className="bg-white">指定日時</option>
+                                <option value="custom">指定日時</option>
                             </select>
-                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
-                                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
-                            </div>
+                            <Button type="button" size="sm" onClick={addReminder} disabled={selectedReminderType === "none"}>＋</Button>
                         </div>
-                        <Button type="button" onClick={addReminder} disabled={selectedReminderType === "none" || (selectedReminderType === "custom" && !customReminderTime)} className="bg-white/20 hover:bg-white/30 text-white border-0">
-                            追加
-                        </Button>
+                    </div>
+                    {/* Existing Reminders List */}
+                    {reminders.length > 0 && (
+                        <div className="pl-8 space-y-1">
+                            {reminders.map((r, idx) => (
+                                <div key={idx} className="flex items-center justify-between text-xs text-primary bg-primary/10 px-2 py-1 rounded">
+                                    <span>{getReminderLabel(r)}</span>
+                                    <button type="button" onClick={() => removeReminder(idx)} className="text-primary hover:text-white">✕</button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Repeat */}
+                    <div className="flex items-center gap-3">
+                        <Repeat className="w-5 h-5 text-gray-400" />
+                        <select
+                            className="flex-1 p-2 bg-white/5 border border-white/10 rounded-lg text-sm outline-none focus:border-primary placeholder:text-gray-600"
+                            value={repeat}
+                            onChange={(e) => setRepeat(e.target.value)}
+                        >
+                            {REPEAT_OPTIONS.map(opt => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                        </select>
                     </div>
 
-                    {selectedReminderType === "custom" && (
+                    {/* URL */}
+                    <div className="flex items-center gap-3">
+                        <LinkIcon className="w-5 h-5 text-gray-400" />
                         <input
-                            type="datetime-local"
-                            className="w-full p-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/50 outline-none mt-2 transition-all text-black"
-                            value={customReminderTime}
-                            onChange={(e) => setCustomReminderTime(e.target.value)}
+                            type="url"
+                            className="flex-1 bg-transparent border-b border-white/10 p-2 text-sm focus:border-primary outline-none transition-all"
+                            placeholder="URL"
+                            value={url}
+                            onChange={(e) => setUrl(e.target.value)}
                         />
-                    )}
+                    </div>
+
+                    {/* Location */}
+                    <div className="flex items-center gap-3">
+                        <MapPin className="w-5 h-5 text-gray-400" />
+                        <input
+                            type="text"
+                            className="flex-1 bg-transparent border-b border-white/10 p-2 text-sm focus:border-primary outline-none transition-all"
+                            placeholder="場所"
+                            value={location}
+                            onChange={(e) => setLocation(e.target.value)}
+                        />
+                    </div>
+
+                    {/* Attachments (Placeholder) */}
+                    <div className="flex items-center gap-3">
+                        <Paperclip className="w-5 h-5 text-gray-400" />
+                        <input
+                            type="text"
+                            className="flex-1 bg-transparent border-b border-white/10 p-2 text-sm focus:border-primary outline-none transition-all"
+                            placeholder="ファイルを添付する"
+                            readOnly
+                        />
+                    </div>
+
+                    {/* Memo */}
+                    <div className="flex items-start gap-3">
+                        <FileText className="w-5 h-5 text-gray-400 mt-2" />
+                        <div className="flex-1">
+                            <input
+                                type="text" // Using input for collapsed look, could be textarea
+                                className="w-full bg-transparent border-b border-white/10 p-2 text-sm focus:border-primary outline-none transition-all"
+                                placeholder="メモ"
+                                value={memo}
+                                onChange={(e) => setMemo(e.target.value)}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Checklist */}
+                    <div className="flex items-start gap-3">
+                        <CheckSquare className="w-5 h-5 text-gray-400 mt-2" />
+                        <div className="flex-1 space-y-2">
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    className="flex-1 bg-transparent border-b border-white/10 p-2 text-sm focus:border-primary outline-none transition-all"
+                                    placeholder="チェックリスト"
+                                    value={newChecklistItem}
+                                    onChange={(e) => setNewChecklistItem(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addChecklistItem())}
+                                />
+                                <Button type="button" size="sm" variant="ghost" onClick={addChecklistItem}>＋</Button>
+                            </div>
+                            {checklist.map(item => (
+                                <div key={item.id} className="flex items-center gap-2 pl-2">
+                                    <input
+                                        type="checkbox"
+                                        className="rounded border-gray-500 bg-transparent"
+                                        checked={item.checked}
+                                        onChange={() => toggleChecklistItem(item.id)}
+                                    />
+                                    <span className={`text-sm flex-1 ${item.checked ? 'line-through text-gray-500' : ''}`}>{item.text}</span>
+                                    <button type="button" onClick={() => removeChecklistItem(item.id)} className="text-gray-500 hover:text-red-400">×</button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                 </div>
 
-                <div className="pt-4 flex justify-between gap-2">
+                {/* Footer Actions */}
+                <div className="pt-6 flex justify-between gap-4 border-t border-white/10">
                     {event && onDelete ? (
-                        <Button type="button" variant="outline" onClick={handleDelete} className="text-red-500 border-red-500/50 hover:bg-red-500/10 hover:text-red-400">
+                        <Button type="button" variant="ghost" onClick={handleDelete} className="text-red-400 hover:text-red-300 hover:bg-red-900/20">
                             削除
                         </Button>
-                    ) : (
-                        <div></div> // Spacer
-                    )}
-                    <div className="flex gap-2">
-                        <Button type="button" variant="ghost" onClick={handleClose} className="text-gray-400 hover:text-white">
+                    ) : <div></div>}
+                    <div className="flex gap-3">
+                        <Button type="button" variant="outline" onClick={handleClose} className="border-white/10 text-gray-300 hover:bg-white/5">
                             キャンセル
                         </Button>
-                        <Button type="submit">保存</Button>
+                        <Button type="submit" className="px-8 font-bold bg-primary text-black hover:bg-primary/90">
+                            保存
+                        </Button>
                     </div>
                 </div>
             </form>

@@ -8,9 +8,14 @@ export interface CalendarEvent {
     end?: Date;
     allDay: boolean;
     calendarId: CalendarType;
-    description?: string;
+    description?: string; // Memo
     location?: string;
+    url?: string;
+    isMemo?: boolean; // Save to memo
+    repeat?: string; // none, daily, weekly, monthly, yearly, custom
+    checklist?: { id: string; text: string; checked: boolean }[];
     reminderTimes?: Date[]; // Absolute times for the reminders
+    attachments?: string[]; // Placeholder for attachment names/urls
 }
 
 
