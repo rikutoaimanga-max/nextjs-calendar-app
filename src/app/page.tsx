@@ -1,65 +1,166 @@
-import Image from "next/image";
+
+"use client";
+
+import { useState } from "react";
+import { addMonths, subMonths } from "date-fns";
+import { Plus } from "lucide-react";
+import { CalendarHeader } from "@/components/calendar/CalendarHeader";
+import { CalendarGrid } from "@/components/calendar/CalendarGrid";
+import { CalendarFilter } from "@/components/calendar/CalendarFilter";
+import { AddEventModal } from "@/components/calendar/AddEventModal";
+import { Button } from "@/components/ui/button";
+import { CalendarEvent, CalendarType } from "@/types";
+import { useNotifications } from "@/hooks/use-notifications";
+import { useReminders } from "@/hooks/use-reminders";
+import { Bell } from "lucide-react";
 
 export default function Home() {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedCalendars, setSelectedCalendars] = useState<CalendarType[]>(['personal', 'work', 'family']);
+  const { permission, requestPermission, sendNotification } = useNotifications();
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | undefined>(undefined);
+
+  // Enable polling for reminders
+  useReminders(events);
+
+
+  const nextMonth = () => {
+    setCurrentDate(addMonths(currentDate, 1));
+  };
+
+  const prevMonth = () => {
+    setCurrentDate(subMonths(currentDate, 1));
+  };
+
+  const goToToday = () => {
+    const today = new Date();
+    setCurrentDate(today);
+    setSelectedDate(today);
+  };
+
+  const handleDayClick = (date: Date) => {
+    setSelectedDate(date);
+    setSelectedEvent(undefined); // Clear selected event for new event creation
+    setIsModalOpen(true);
+  };
+
+  const handleEventClick = (event: CalendarEvent) => {
+    setSelectedEvent(event);
+    setSelectedDate(event.start);
+    setIsModalOpen(true);
+  };
+
+  const handleSaveEvent = (eventData: Omit<CalendarEvent, "id">) => {
+    if (selectedEvent) {
+      // Update existing event
+      setEvents(events.map(e =>
+        e.id === selectedEvent.id
+          ? { ...eventData, id: selectedEvent.id }
+          : e
+      ));
+      if (permission === "granted") {
+        sendNotification("予定を更新しました", {
+          body: `${eventData.title} - ${eventData.start.toLocaleDateString()}`,
+        });
+      }
+    } else {
+      // Create new event
+      const newEvent: CalendarEvent = {
+        ...eventData,
+        id: Math.random().toString(36).substr(2, 9),
+      };
+      setEvents([...events, newEvent]);
+
+      if (permission === "granted") {
+        sendNotification("予定を追加しました", {
+          body: `${newEvent.title} - ${eventData.start.toLocaleDateString()}`,
+        });
+      }
+    }
+    setIsModalOpen(false);
+    setSelectedEvent(undefined);
+  };
+
+  const handleDeleteEvent = (eventId: string) => {
+    setEvents(events.filter(e => e.id !== eventId));
+    setIsModalOpen(false);
+    setSelectedEvent(undefined);
+
+    if (permission === "granted") {
+      sendNotification("予定を削除しました");
+    }
+  };
+
+  const filteredEvents = events.filter(event => selectedCalendars.includes(event.calendarId));
+
+  const toggleCalendar = (type: CalendarType) => {
+    setSelectedCalendars(prev =>
+      prev.includes(type) ? prev.filter(c => c !== type) : [...prev, type]
+    );
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <main className="flex min-h-screen flex-col bg-background relative">
+      <CalendarHeader
+        currentDate={currentDate}
+        onNextMonth={nextMonth}
+        onPrevMonth={prevMonth}
+        onToday={goToToday}
+      />
+      <CalendarFilter selectedCalendars={selectedCalendars} onToggle={toggleCalendar} />
+
+      {permission === "default" && (
+        <div className="bg-primary/10 p-2 text-center text-sm flex items-center justify-center gap-2 text-primary">
+          <Bell className="h-4 w-4" />
+          <span>通知を有効にすると、予定の確認ができます</span>
+          <Button size="sm" variant="outline" onClick={requestPermission} className="h-7 text-xs bg-white border-primary/20 text-primary">
+            有効にする
+          </Button>
+        </div>
+      )}
+
+      <div className="flex-1 overflow-auto">
+        <CalendarGrid
+          currentDate={currentDate}
+          events={filteredEvents}
+          onDayClick={handleDayClick}
+          onEventClick={handleEventClick}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      </div>
+
+
+
+      <Button
+        className="fixed bottom-8 right-8 rounded-full w-16 h-16 shadow-[0_0_30px_rgba(0,224,208,0.3)] p-0 bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-300 hover:scale-105 z-50 ring-2 ring-primary/20"
+        onClick={() => {
+          setSelectedDate(new Date());
+          setSelectedEvent(undefined);
+          setIsModalOpen(true);
+        }}
+        aria-label="予定を追加"
+      >
+        <Plus className="h-8 w-8" />
+      </Button>
+
+
+
+      <AddEventModal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedEvent(undefined);
+        }}
+        onSave={handleSaveEvent}
+        onDelete={handleDeleteEvent}
+        initialDate={selectedDate}
+        event={selectedEvent}
+      />
+    </main>
   );
 }
+
+
+

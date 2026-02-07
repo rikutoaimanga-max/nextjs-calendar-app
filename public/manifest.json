@@ -1,0 +1,22 @@
+
+{
+  "name": "タイムツリー風カレンダー",
+  "short_name": "Calendar",
+  "description": "家族やグループで共有できるカレンダーアプリ",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#00C2B2",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
