@@ -26,19 +26,53 @@ export function CreateCalendarModal({ isOpen, onClose, onSave }: CreateCalendarM
 
     if (!isOpen) return null;
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            if (file.size > 1024 * 1024 * 2) { // 2MB limit
-                alert("画像サイズは2MB以下にしてください。");
-                return;
+            try {
+                const resizedImage = await resizeImage(file);
+                setCoverImage(resizedImage);
+            } catch (error) {
+                console.error("Image processing failed:", error);
+                alert("画像の処理に失敗しました。別の画像を試してください。");
             }
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setCoverImage(reader.result as string);
-            };
-            reader.readAsDataURL(file);
         }
+    };
+
+    const resizeImage = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.src = URL.createObjectURL(file);
+            img.onload = () => {
+                const canvas = document.createElement("canvas");
+                let width = img.width;
+                let height = img.height;
+                const MAX_SIZE = 1200;
+
+                if (width > height) {
+                    if (width > MAX_SIZE) {
+                        height *= MAX_SIZE / width;
+                        width = MAX_SIZE;
+                    }
+                } else {
+                    if (height > MAX_SIZE) {
+                        width *= MAX_SIZE / height;
+                        height = MAX_SIZE;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext("2d");
+                if (!ctx) {
+                    reject(new Error("Could not get canvas context"));
+                    return;
+                }
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL("image/jpeg", 0.7)); // Compress to JPEG with 0.7 quality
+            };
+            img.onerror = (err) => reject(err);
+        });
     };
 
     const handleSave = () => {
