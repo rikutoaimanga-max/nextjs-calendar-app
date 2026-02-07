@@ -117,7 +117,6 @@ export default function Home() {
         onPrevMonth={prevMonth}
         onToday={goToToday}
       />
-      <div className="text-[10px] text-center text-muted-foreground opacity-50">v3.0 Interaction Patch</div>
       <CalendarFilter selectedCalendars={selectedCalendars} onToggle={toggleCalendar} />
 
       {permission === "default" && (
