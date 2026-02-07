@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { format, addHours } from "date-fns";
 import { ja } from "date-fns/locale";
-import { CalendarEvent, CalendarType, CALENDAR_LABELS, CALENDAR_COLORS } from "@/types";
+import { CalendarEvent, Calendar, CALENDAR_LABELS, CALENDAR_COLORS } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { MapPin, Link as LinkIcon, Repeat, FileText, CheckSquare, Paperclip, User, Clock, Bell } from "lucide-react";
@@ -33,9 +33,10 @@ interface AddEventModalProps {
     onDelete?: (eventId: string) => void;
     initialDate?: Date;
     event?: CalendarEvent;
+    calendars?: Calendar[];
 }
 
-export function AddEventModal({ isOpen, onClose, onSave, onDelete, initialDate, event }: AddEventModalProps) {
+export function AddEventModal({ isOpen, onClose, onSave, onDelete, initialDate, event, calendars }: AddEventModalProps) {
     const [title, setTitle] = useState("");
 
     // Date & Time
@@ -47,7 +48,7 @@ export function AddEventModal({ isOpen, onClose, onSave, onDelete, initialDate, 
     const [isMemo, setIsMemo] = useState(false); // Save to memo
 
     // Type
-    const [type, setType] = useState<CalendarType>("personal");
+    const [type, setType] = useState<string>("personal");
 
     // Details
     const [location, setLocation] = useState("");
@@ -126,11 +127,19 @@ export function AddEventModal({ isOpen, onClose, onSave, onDelete, initialDate, 
                 setMemo("");
                 setChecklist([]);
                 setReminders([]);
+                setReminders([]);
             }
-            setSelectedReminderType("none");
-            setCustomReminderTime("");
+        } else {
+            // Reset validation logic or other things if needed when closed
         }
     }, [isOpen, initialDate, event]);
+
+    // Update type when calendars change or on open if new event
+    useEffect(() => {
+        if (isOpen && !event && calendars && calendars.length > 0 && !calendars.find(c => c.id === type)) {
+            setType(calendars[0].id);
+        }
+    }, [isOpen, event, calendars, type]);
 
     const addReminder = () => {
         if (selectedReminderType === "none") return;
@@ -311,20 +320,22 @@ export function AddEventModal({ isOpen, onClose, onSave, onDelete, initialDate, 
                 {/* Details Section */}
                 <div className="space-y-4">
                     {/* Calendar Type */}
+                    {/* Calendar Type */}
                     <div className="flex items-center gap-3">
                         <User className="w-5 h-5 text-gray-400" />
-                        <div className="flex flex-1 gap-2">
-                            {(Object.keys(CALENDAR_LABELS) as CalendarType[]).map((t) => (
+                        <div className="flex flex-1 gap-2 flex-wrap">
+                            {calendars?.map((cal) => (
                                 <button
-                                    key={t}
+                                    key={cal.id}
                                     type="button"
-                                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${type === t
-                                        ? "bg-primary text-black font-bold border-primary"
+                                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border flex items-center gap-2 ${type === cal.id
+                                        ? "bg-white text-black font-bold border-white"
                                         : "bg-transparent text-gray-400 border-white/10 hover:bg-white/5"
                                         }`}
-                                    onClick={() => setType(t)}
+                                    onClick={() => setType(cal.id)}
                                 >
-                                    {CALENDAR_LABELS[t]}
+                                    <div className={`w-2 h-2 rounded-full ${cal.color}`} />
+                                    {cal.name}
                                 </button>
                             ))}
                         </div>

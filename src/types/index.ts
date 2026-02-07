@@ -1,5 +1,11 @@
 
-export type CalendarType = 'personal' | 'work' | 'family';
+export type CalendarType = string;
+
+export interface Calendar {
+    id: string;
+    name: string;
+    color: string;
+}
 
 export interface CalendarEvent {
     id: string;
@@ -7,7 +13,7 @@ export interface CalendarEvent {
     start: Date;
     end?: Date;
     allDay: boolean;
-    calendarId: CalendarType;
+    calendarId: string;
     description?: string; // Memo
     location?: string;
     url?: string;
@@ -19,13 +25,19 @@ export interface CalendarEvent {
 }
 
 
-export const CALENDAR_COLORS: Record<CalendarType, string> = {
+export const DEFAULT_CALENDARS: Calendar[] = [
+    { id: "personal", name: "個人", color: "bg-blue-500" },
+    { id: "work", name: "仕事", color: "bg-green-500" },
+    { id: "family", name: "家族", color: "bg-orange-500" },
+];
+
+export const CALENDAR_COLORS: Record<string, string> = {
     personal: "bg-blue-500",
     work: "bg-green-500",
     family: "bg-orange-500",
 };
 
-export const CALENDAR_LABELS: Record<CalendarType, string> = {
+export const CALENDAR_LABELS: Record<string, string> = {
     personal: "個人",
     work: "仕事",
     family: "家族",

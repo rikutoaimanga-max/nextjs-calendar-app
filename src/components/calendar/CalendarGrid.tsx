@@ -16,18 +16,19 @@ import { useRef } from "react";
 import { ja } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 
-import { CalendarEvent, CALENDAR_COLORS } from "@/types";
+import { CalendarEvent, Calendar } from "@/types";
 
 interface CalendarGridProps {
     currentDate: Date;
     events: CalendarEvent[];
-    selectedDate?: Date; // Add selectedDate prop
+    selectedDate?: Date;
     onDayClick: (date: Date) => void;
-    onDayDoubleClick?: (date: Date) => void; // Add double click prop
+    onDayDoubleClick?: (date: Date) => void;
     onEventClick: (event: CalendarEvent) => void;
+    calendars?: Calendar[];
 }
 
-export function CalendarGrid({ currentDate, events, selectedDate, onDayClick, onDayDoubleClick, onEventClick }: CalendarGridProps) {
+export function CalendarGrid({ currentDate, events, selectedDate, onDayClick, onDayDoubleClick, onEventClick, calendars }: CalendarGridProps) {
     const monthStart = startOfMonth(currentDate);
     const monthEnd = endOfMonth(monthStart);
     const startDate = startOfWeek(monthStart);
@@ -120,24 +121,27 @@ export function CalendarGrid({ currentDate, events, selectedDate, onDayClick, on
                             <div className="flex flex-col gap-0.5 px-0.5 overflow-hidden">
                                 {events
                                     .filter((event) => isSameDay(event.start, day))
-                                    .slice(0, 15) // Show even more events on large screens
-                                    .map((event) => (
-                                        <div
-                                            key={event.id}
-                                            onClick={(e) => {
-                                                e.stopPropagation(); // Prevent triggering onDayClick
-                                                onEventClick(event);
-                                            }}
-                                            className={cn(
-                                                "text-[10px] md:text-sm lg:text-base truncate rounded px-1.5 py-0.5 text-white bg-opacity-90 shadow-sm transition-transform hover:scale-105",
-                                                event.calendarId === 'personal' ? 'bg-blue-500' :
-                                                    event.calendarId === 'work' ? 'bg-green-500' :
-                                                        event.calendarId === 'family' ? 'bg-orange-500' : 'bg-gray-500'
-                                            )}
-                                        >
-                                            {event.title}
-                                        </div>
-                                    ))}
+                                    .slice(0, 15)
+                                    .map((event) => {
+                                        const calendar = calendars?.find(c => c.id === event.calendarId);
+                                        const colorClass = calendar ? calendar.color : "bg-gray-500";
+
+                                        return (
+                                            <div
+                                                key={event.id}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onEventClick(event);
+                                                }}
+                                                className={cn(
+                                                    "text-[10px] md:text-sm lg:text-base truncate rounded px-1.5 py-0.5 text-white bg-opacity-90 shadow-sm transition-transform hover:scale-105",
+                                                    colorClass
+                                                )}
+                                            >
+                                                {event.title}
+                                            </div>
+                                        );
+                                    })}
                             </div>
                         </div>
                     );
