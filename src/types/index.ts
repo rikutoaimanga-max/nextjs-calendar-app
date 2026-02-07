@@ -25,20 +25,9 @@ export interface CalendarEvent {
 }
 
 
-export const DEFAULT_CALENDARS: Calendar[] = [
-    { id: "personal", name: "個人", color: "bg-blue-500" },
-    { id: "work", name: "仕事", color: "bg-green-500" },
-    { id: "family", name: "家族", color: "bg-orange-500" },
-];
-
-export const CALENDAR_COLORS: Record<string, string> = {
-    personal: "bg-blue-500",
-    work: "bg-green-500",
-    family: "bg-orange-500",
-};
-
-export const CALENDAR_LABELS: Record<string, string> = {
-    personal: "個人",
-    work: "仕事",
-    family: "家族",
-};
+// export const DEFAULT_CALENDARS: Calendar[] = []; 
+// Deprecated: Dynamic calendars are now used.
+// export const CALENDAR_COLORS = ...
+// export const CALENDAR_LABELS = ...
+export const CALENDAR_COLORS: Record<string, string> = {};
+export const CALENDAR_LABELS: Record<string, string> = {};

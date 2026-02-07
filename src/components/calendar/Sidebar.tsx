@@ -10,6 +10,7 @@ interface SidebarProps {
     selectedCalendarIds: string[];
     onToggleCalendar: (id: string) => void;
     onAddCalendar: (calendar: Calendar) => void;
+    onDeleteCalendar: (id: string) => void;
 }
 
 const PRESET_COLORS = [
@@ -32,7 +33,7 @@ const PRESET_COLORS = [
     "bg-rose-500",
 ];
 
-export function Sidebar({ calendars, selectedCalendarIds, onToggleCalendar, onAddCalendar }: SidebarProps) {
+export function Sidebar({ calendars, selectedCalendarIds, onToggleCalendar, onAddCalendar, onDeleteCalendar }: SidebarProps) {
     const [isAdding, setIsAdding] = useState(false);
     const [newCalendarName, setNewCalendarName] = useState("");
     const [newCalendarColor, setNewCalendarColor] = useState(PRESET_COLORS[0]);
@@ -50,6 +51,12 @@ export function Sidebar({ calendars, selectedCalendarIds, onToggleCalendar, onAd
         onAddCalendar(newCalendar);
         setNewCalendarName("");
         setIsAdding(false);
+    };
+
+    const handleDelete = (id: string, name: string) => {
+        if (confirm(`カレンダー「${name}」を削除しますか？\n含まれるすべての予定も削除されます。`)) {
+            onDeleteCalendar(id);
+        }
     };
 
     return (
@@ -74,18 +81,30 @@ export function Sidebar({ calendars, selectedCalendarIds, onToggleCalendar, onAd
 
                     <div className="space-y-1">
                         {calendars.map(cal => (
-                            <div key={cal.id} className="flex items-center gap-2 group">
+                            <div key={cal.id} className="flex items-center gap-2 group relative">
                                 <button
                                     onClick={() => onToggleCalendar(cal.id)}
                                     className={`flex-1 flex items-center gap-3 p-2 rounded-lg transition-all text-sm text-left ${selectedCalendarIds.includes(cal.id)
-                                            ? "bg-white/5 text-white"
-                                            : "text-gray-500 hover:bg-white/5 hover:text-gray-300"
+                                        ? "bg-white/5 text-white"
+                                        : "text-gray-500 hover:bg-white/5 hover:text-gray-300"
                                         }`}
                                 >
                                     <div className={`w-3 h-3 rounded-full ${cal.color} ${selectedCalendarIds.includes(cal.id) ? 'ring-2 ring-white/20' : 'opacity-50'}`} />
-                                    <span className="truncate">{cal.name}</span>
-                                    {selectedCalendarIds.includes(cal.id) && <Check className="w-3 h-3 ml-auto opacity-50" />}
+                                    <span className="truncate flex-1">{cal.name}</span>
+                                    {selectedCalendarIds.includes(cal.id) && <Check className="w-3 h-3 opacity-50" />}
                                 </button>
+                                {calendars.length > 1 && (
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDelete(cal.id, cal.name);
+                                        }}
+                                        className="absolute right-2 p-1.5 text-gray-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        title="削除"
+                                    >
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                )}
                             </div>
                         ))}
                     </div>
