@@ -5,6 +5,7 @@ export interface Calendar {
     id: string;
     name: string;
     color: string;
+    coverImage?: string; // Base64 string for the cover image
 }
 
 export interface CalendarEvent {

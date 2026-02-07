@@ -13,44 +13,20 @@ interface SidebarProps {
     onDeleteCalendar: (id: string) => void;
 }
 
-const PRESET_COLORS = [
-    "bg-red-500",
-    "bg-orange-500",
-    "bg-amber-500",
-    "bg-yellow-500",
-    "bg-lime-500",
-    "bg-green-500",
-    "bg-emerald-500",
-    "bg-teal-500",
-    "bg-cyan-500",
-    "bg-sky-500",
-    "bg-blue-500",
-    "bg-indigo-500",
-    "bg-violet-500",
-    "bg-purple-500",
-    "bg-fuchsia-500",
-    "bg-pink-500",
-    "bg-rose-500",
-];
+
+
+import { CreateCalendarModal } from "./CreateCalendarModal";
 
 export function Sidebar({ calendars, selectedCalendarIds, onToggleCalendar, onAddCalendar, onDeleteCalendar }: SidebarProps) {
-    const [isAdding, setIsAdding] = useState(false);
-    const [newCalendarName, setNewCalendarName] = useState("");
-    const [newCalendarColor, setNewCalendarColor] = useState(PRESET_COLORS[0]);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-    const handleAdd = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!newCalendarName.trim()) return;
-
+    const handleSaveCalendar = (calendarData: Omit<Calendar, "id">) => {
         const newCalendar: Calendar = {
             id: Math.random().toString(36).substr(2, 9),
-            name: newCalendarName,
-            color: newCalendarColor,
+            ...calendarData,
         };
-
         onAddCalendar(newCalendar);
-        setNewCalendarName("");
-        setIsAdding(false);
+        setIsCreateModalOpen(false);
     };
 
     const handleDelete = (id: string, name: string) => {
@@ -72,7 +48,7 @@ export function Sidebar({ calendars, selectedCalendarIds, onToggleCalendar, onAd
                     <div className="flex items-center justify-between mb-2">
                         <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider">カレンダー</h2>
                         <button
-                            onClick={() => setIsAdding(true)}
+                            onClick={() => setIsCreateModalOpen(true)}
                             className="text-gray-400 hover:text-white transition-colors"
                         >
                             <Plus className="w-4 h-4" />
@@ -84,12 +60,20 @@ export function Sidebar({ calendars, selectedCalendarIds, onToggleCalendar, onAd
                             <div key={cal.id} className="flex items-center gap-2 group relative">
                                 <button
                                     onClick={() => onToggleCalendar(cal.id)}
-                                    className={`flex-1 flex items-center gap-3 p-2 rounded-lg transition-all text-sm text-left ${selectedCalendarIds.includes(cal.id)
+                                    className={`flex-1 flex items-center gap-3 p-2 rounded-lg transition-all text-sm text-left overflow-hidden ${selectedCalendarIds.includes(cal.id)
                                         ? "bg-white/5 text-white"
                                         : "text-gray-500 hover:bg-white/5 hover:text-gray-300"
                                         }`}
                                 >
-                                    <div className={`w-3 h-3 rounded-full ${cal.color} ${selectedCalendarIds.includes(cal.id) ? 'ring-2 ring-white/20' : 'opacity-50'}`} />
+                                    {/* Cover Image Indicator (if exists) or Color Dot */}
+                                    {cal.coverImage ? (
+                                        <div className="w-6 h-6 rounded-full overflow-hidden border border-white/10 shrink-0">
+                                            <img src={cal.coverImage} alt="" className="w-full h-full object-cover" />
+                                        </div>
+                                    ) : (
+                                        <div className={`w-3 h-3 rounded-full ${cal.color} ${selectedCalendarIds.includes(cal.id) ? 'ring-2 ring-white/20' : 'opacity-50'}`} />
+                                    )}
+
                                     <span className="truncate flex-1">{cal.name}</span>
                                     {selectedCalendarIds.includes(cal.id) && <Check className="w-3 h-3 opacity-50" />}
                                 </button>
@@ -99,7 +83,7 @@ export function Sidebar({ calendars, selectedCalendarIds, onToggleCalendar, onAd
                                             e.stopPropagation();
                                             handleDelete(cal.id, cal.name);
                                         }}
-                                        className="absolute right-2 p-1.5 text-gray-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        className="absolute right-2 p-1.5 text-gray-500 hover:text-red-500 transition-colors"
                                         title="削除"
                                     >
                                         <X className="w-3 h-3" />
@@ -109,46 +93,17 @@ export function Sidebar({ calendars, selectedCalendarIds, onToggleCalendar, onAd
                         ))}
                     </div>
                 </div>
-
-                {isAdding && (
-                    <div className="mb-6 bg-white/5 p-3 rounded-lg border border-white/10 animate-in slide-in-from-left-2 duration-200">
-                        <form onSubmit={handleAdd} className="space-y-3">
-                            <input
-                                type="text"
-                                placeholder="カレンダー名"
-                                className="w-full bg-transparent border-b border-white/20 p-1 text-sm text-white focus:border-primary outline-none placeholder:text-gray-600"
-                                value={newCalendarName}
-                                onChange={(e) => setNewCalendarName(e.target.value)}
-                                autoFocus
-                            />
-
-                            <div className="flex flex-wrap gap-1.5">
-                                {PRESET_COLORS.map(color => (
-                                    <button
-                                        key={color}
-                                        type="button"
-                                        className={`w-4 h-4 rounded-full ${color} ${newCalendarColor === color ? 'ring-2 ring-white scale-110' : 'opacity-70 hover:opacity-100'}`}
-                                        onClick={() => setNewCalendarColor(color)}
-                                    />
-                                ))}
-                            </div>
-
-                            <div className="flex justify-end gap-2 pt-1">
-                                <Button type="button" size="sm" variant="ghost" onClick={() => setIsAdding(false)} className="h-7 text-xs text-gray-400 hover:text-white">
-                                    キャンセル
-                                </Button>
-                                <Button type="submit" size="sm" className="h-7 text-xs bg-primary text-black hover:bg-primary/90">
-                                    作成
-                                </Button>
-                            </div>
-                        </form>
-                    </div>
-                )}
             </div>
 
             <div className="p-4 border-t border-white/10 text-xs text-gray-600 text-center">
                 © 2026 Calendar App
             </div>
+
+            <CreateCalendarModal
+                isOpen={isCreateModalOpen}
+                onClose={() => setIsCreateModalOpen(false)}
+                onSave={handleSaveCalendar}
+            />
         </div>
     );
 }
