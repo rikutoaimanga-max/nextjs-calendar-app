@@ -41,9 +41,16 @@ export default function Home() {
     setSelectedDate(today);
   };
 
-  const handleDayClick = (date: Date) => {
+  const handleDaySelect = (date: Date) => {
+    console.log("Day selected (single click):", date);
     setSelectedDate(date);
-    setSelectedEvent(undefined); // Clear selected event for new event creation
+    // Explicitly ensure modal is NOT opened here
+  };
+
+  const handleDayAdd = (date: Date) => {
+    console.log("Day added (double click):", date);
+    setSelectedDate(date);
+    setSelectedEvent(undefined);
     setIsModalOpen(true);
   };
 
@@ -110,6 +117,7 @@ export default function Home() {
         onPrevMonth={prevMonth}
         onToday={goToToday}
       />
+      <div className="text-[10px] text-center text-muted-foreground opacity-50">v3.0 Interaction Patch</div>
       <CalendarFilter selectedCalendars={selectedCalendars} onToggle={toggleCalendar} />
 
       {permission === "default" && (
@@ -126,7 +134,9 @@ export default function Home() {
         <CalendarGrid
           currentDate={currentDate}
           events={filteredEvents}
-          onDayClick={handleDayClick}
+          selectedDate={selectedDate}
+          onDayClick={handleDaySelect}
+          onDayDoubleClick={handleDayAdd}
           onEventClick={handleEventClick}
         />
       </div>

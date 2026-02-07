@@ -12,6 +12,7 @@ import {
     startOfMonth,
     startOfWeek,
 } from "date-fns";
+import { useRef } from "react";
 import { ja } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 
@@ -20,11 +21,13 @@ import { CalendarEvent, CALENDAR_COLORS } from "@/types";
 interface CalendarGridProps {
     currentDate: Date;
     events: CalendarEvent[];
+    selectedDate?: Date; // Add selectedDate prop
     onDayClick: (date: Date) => void;
-    onEventClick: (event: CalendarEvent) => void; // Add event click callback
+    onDayDoubleClick?: (date: Date) => void; // Add double click prop
+    onEventClick: (event: CalendarEvent) => void;
 }
 
-export function CalendarGrid({ currentDate, events, onDayClick, onEventClick }: CalendarGridProps) {
+export function CalendarGrid({ currentDate, events, selectedDate, onDayClick, onDayDoubleClick, onEventClick }: CalendarGridProps) {
     const monthStart = startOfMonth(currentDate);
     const monthEnd = endOfMonth(monthStart);
     const startDate = startOfWeek(monthStart);
@@ -36,6 +39,29 @@ export function CalendarGrid({ currentDate, events, onDayClick, onEventClick }: 
     });
 
     const weekDays = ["日", "月", "火", "水", "木", "金", "土"];
+
+    // Ref to track click timer
+    const clickTimeoutRef = useRef<{ [key: string]: NodeJS.Timeout }>({});
+
+    const handleCellClick = (day: Date) => {
+        const key = day.toISOString();
+
+        if (clickTimeoutRef.current[key]) {
+            // Double click detected
+            clearTimeout(clickTimeoutRef.current[key]);
+            delete clickTimeoutRef.current[key];
+            if (onDayDoubleClick) {
+                onDayDoubleClick(day);
+            }
+        } else {
+            // First click - wait for potential second click
+            clickTimeoutRef.current[key] = setTimeout(() => {
+                // Timer expired - it was a single click
+                onDayClick(day);
+                delete clickTimeoutRef.current[key];
+            }, 250); // 250ms wait
+        }
+    };
 
     return (
         <div className="flex flex-col h-full bg-transparent">
@@ -59,18 +85,23 @@ export function CalendarGrid({ currentDate, events, onDayClick, onEventClick }: 
                 {days.map((day, dayIdx) => {
                     // Adjust row height broadly
                     const isCurrentMonth = isSameMonth(day, monthStart);
+                    const isSelected = selectedDate && isSameDay(day, selectedDate);
 
                     return (
                         <div
                             key={day.toString()}
-                            onClick={() => onDayClick(day)}
+                            onClick={() => handleCellClick(day)}
                             className={cn(
-                                "min-h-[100px] md:min-h-[200px] lg:min-h-[250px] border-b border-r border-white/5 p-1 relative transition-all duration-200 hover:bg-white/5 cursor-pointer group",
+                                "min-h-[100px] md:min-h-[200px] lg:min-h-[250px] border-b border-r border-white/5 p-1 relative transition-all duration-200 cursor-pointer group select-none",
                                 !isCurrentMonth && "bg-black/20 text-muted-foreground/50",
+                                isSelected ? "bg-primary/20 shadow-[inset_0_0_20px_rgba(0,224,208,0.3)]" : "hover:bg-white/5",
                                 // Left border for first column
                                 dayIdx % 7 === 0 && "border-l-0"
                             )}
                         >
+                            {isSelected && (
+                                <div className="absolute inset-0 border-2 border-primary/80 rounded-lg pointer-events-none z-0" />
+                            )}
 
                             <div className="flex justify-center mt-1">
                                 <span
