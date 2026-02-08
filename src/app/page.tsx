@@ -7,6 +7,7 @@ import { CalendarHeader } from "@/components/calendar/CalendarHeader";
 import { CalendarGrid } from "@/components/calendar/CalendarGrid";
 import { Sidebar } from "@/components/calendar/Sidebar";
 import { AddEventModal } from "@/components/calendar/AddEventModal";
+import { EventDetailsModal } from "@/components/calendar/EventDetailsModal";
 import { Button } from "@/components/ui/button";
 import { CalendarEvent, Calendar as CalendarType } from "@/types";
 import { useNotifications } from "@/hooks/use-notifications";
@@ -22,6 +23,7 @@ export default function Home() {
 
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const { permission, requestPermission, sendNotification } = useNotifications();
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | undefined>(undefined);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -121,6 +123,11 @@ export default function Home() {
   const handleEventClick = (event: CalendarEvent) => {
     setSelectedEvent(event);
     setSelectedDate(event.start);
+    setIsDetailsModalOpen(true);
+  };
+
+  const handleEditEvent = () => {
+    setIsDetailsModalOpen(false);
     setIsModalOpen(true);
   };
 
@@ -261,6 +268,17 @@ export default function Home() {
         onSave={handleSaveEvent}
         onDelete={handleDeleteEvent}
         initialDate={selectedDate}
+        event={selectedEvent}
+        calendars={calendars}
+      />
+
+      <EventDetailsModal
+        isOpen={isDetailsModalOpen}
+        onClose={() => {
+          setIsDetailsModalOpen(false);
+          setSelectedEvent(undefined);
+        }}
+        onEdit={handleEditEvent}
         event={selectedEvent}
         calendars={calendars}
       />
