@@ -12,10 +12,16 @@ import { MapPin, Link as LinkIcon, Repeat, FileText, CheckSquare, Paperclip, Use
 const REMINDER_OPTIONS = [
     { value: "at_start", label: "イベント開始時", minutes: 0 },
     { value: "5_min_before", label: "5分前", minutes: 5 },
+    { value: "10_min_before", label: "10分前", minutes: 10 },
     { value: "15_min_before", label: "15分前", minutes: 15 },
     { value: "30_min_before", label: "30分前", minutes: 30 },
     { value: "1_hour_before", label: "1時間前", minutes: 60 },
+    { value: "2_hour_before", label: "2時間前", minutes: 120 },
+    { value: "3_hour_before", label: "3時間前", minutes: 180 },
+    { value: "12_hour_before", label: "12時間前", minutes: 720 },
     { value: "1_day_before", label: "1日前", minutes: 24 * 60 },
+    { value: "2_day_before", label: "2日前", minutes: 48 * 60 },
+    { value: "1_week_before", label: "1週間前", minutes: 7 * 24 * 60 },
 ];
 
 const REPEAT_OPTIONS = [
